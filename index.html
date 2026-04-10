@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gestión de Lubricación de Máquinas</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg-primary:#ffffff;--bg-secondary:#f5f5f3;--bg-tertiary:#ededea;
+    --text-primary:#1a1a18;--text-secondary:#5a5a56;--text-tertiary:#9a9a94;
+    --border-light:rgba(0,0,0,0.1);--border-mid:rgba(0,0,0,0.18);
+    --radius-md:8px;--radius-lg:12px;--radius-xl:16px;
+    --green-bg:#EAF3DE;--green-text:#27500A;--green-dot:#639922;
+    --amber-bg:#FAEEDA;--amber-text:#633806;--amber-dot:#BA7517;
+    --red-bg:#FCEBEB;--red-text:#791F1F;--red-dot:#E24B4A;
+    --info-bg:#E6F1FB;--info-text:#0C447C;--info-border:rgba(24,95,165,0.3);
+    --danger-bg:#FCEBEB;--danger-text:#A32D2D;--danger-border:rgba(163,45,45,0.3);
+  }
+  @media(prefers-color-scheme:dark){
+    :root{
+      --bg-primary:#1e1e1c;--bg-secondary:#2a2a28;--bg-tertiary:#323230;
+      --text-primary:#f0f0ec;--text-secondary:#a0a09a;--text-tertiary:#606058;
+      --border-light:rgba(255,255,255,0.08);--border-mid:rgba(255,255,255,0.15);
+      --green-bg:#27500A;--green-text:#C0DD97;
+      --amber-bg:#633806;--amber-text:#FAC775;
+      --red-bg:#791F1F;--red-text:#F7C1C1;
+      --info-bg:#0C447C;--info-text:#B5D4F4;
+      --danger-bg:#791F1F;--danger-text:#F7C1C1;
+    }
+  }
+  body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg-tertiary);color:var(--text-primary);min-height:100vh;padding:1.5rem}
+  .container{max-width:1300px;margin:0 auto}
+  header{margin-bottom:1.25rem;display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px}
+  header h1{font-size:22px;font-weight:600;color:var(--text-primary)}
+  header p{font-size:13px;color:var(--text-secondary);margin-top:4px}
+  .save-indicator{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-tertiary);background:var(--bg-secondary);border:0.5px solid var(--border-light);border-radius:var(--radius-md);padding:5px 10px;white-space:nowrap;flex-shrink:0}
+  .save-dot{width:7px;height:7px;border-radius:50%;background:var(--green-dot);flex-shrink:0;transition:background 0.3s}
+  .save-dot.saving{background:var(--amber-dot)}
+  .save-dot.error{background:var(--red-dot)}
+  .top-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:var(--bg-primary);border-radius:var(--radius-lg);border:0.5px solid var(--border-light);padding:0.75rem 1rem;margin-bottom:1rem}
+  .filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center;flex:1}
+  input[type=text],select{font-size:13px;padding:6px 10px;border-radius:var(--radius-md);border:0.5px solid var(--border-mid);background:var(--bg-secondary);color:var(--text-primary);height:34px;outline:none}
+  input[type=text]:focus,select:focus{border-color:rgba(24,95,165,0.5)}
+  .btn{font-size:13px;padding:6px 14px;border-radius:var(--radius-md);border:0.5px solid var(--border-mid);background:var(--bg-secondary);color:var(--text-primary);cursor:pointer;height:34px;white-space:nowrap}
+  .btn:hover{background:var(--bg-tertiary)}
+  .btn:disabled{opacity:0.5;cursor:not-allowed}
+  .btn-add{background:var(--info-bg);color:var(--info-text);border-color:var(--info-border);font-weight:500}
+  .btn-sync{background:var(--green-bg);color:var(--green-text);border-color:rgba(99,153,34,0.3);font-weight:500}
+  .metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:1rem}
+  .metric{background:var(--bg-primary);border-radius:var(--radius-md);padding:0.75rem 1rem;border:0.5px solid var(--border-light)}
+  .metric-label{font-size:12px;color:var(--text-secondary);margin-bottom:4px}
+  .metric-value{font-size:24px;font-weight:600;color:var(--text-primary);line-height:1}
+  .metric-sub{font-size:11px;color:var(--text-tertiary);margin-top:4px}
+  .legend{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:0.6rem;align-items:center;font-size:12px;color:var(--text-secondary);padding:0 2px}
+  .legend-item{display:flex;align-items:center;gap:5px}
+  .dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0}
+  .table-card{background:var(--bg-primary);border-radius:var(--radius-lg);border:0.5px solid var(--border-light);overflow:hidden}
+  .table-wrap{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:13px;min-width:720px}
+  thead tr{background:var(--bg-secondary)}
+  th{padding:9px 12px;text-align:left;font-weight:500;font-size:12px;color:var(--text-secondary);border-bottom:0.5px solid var(--border-light);white-space:nowrap;cursor:pointer;user-select:none}
+  th:hover{color:var(--text-primary)}
+  td{padding:8px 12px;border-bottom:0.5px solid var(--border-light);vertical-align:middle}
+  tr:last-child td{border-bottom:none}
+  tbody tr:hover td{background:var(--bg-secondary)}
+  .row-ok td:first-child{border-left:3px solid var(--green-dot)}
+  .row-alert td:first-child{border-left:3px solid var(--red-dot)}
+  .row-mid td:first-child{border-left:3px solid var(--amber-dot)}
+  .maquina-name{font-weight:500;color:var(--text-primary);font-size:13px}
+  .plant-badge{font-size:11px;color:var(--text-tertiary);margin-top:1px}
+  .tag{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:500;white-space:nowrap;cursor:pointer;border:none;font-family:inherit}
+  .tag:hover{opacity:0.8}
+  .tag-completa{background:var(--green-bg);color:var(--green-text)}
+  .tag-proceso{background:var(--amber-bg);color:var(--amber-text)}
+  .tag-pendiente{background:var(--red-bg);color:var(--red-text)}
+  .score-bar{display:flex;gap:3px;align-items:center}
+  .score-seg{width:16px;height:7px;border-radius:2px}
+  .score-label{font-size:11px;color:var(--text-secondary);margin-left:4px}
+  .empty{padding:2.5rem;text-align:center;color:var(--text-tertiary);font-size:14px}
+  .loading-screen{position:fixed;inset:0;background:var(--bg-tertiary);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:200}
+  .loading-spinner{width:32px;height:32px;border:3px solid var(--border-light);border-top-color:var(--green-dot);border-radius:50%;animation:spin 0.8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .loading-text{font-size:14px;color:var(--text-secondary)}
+  .toast{position:fixed;bottom:1.5rem;right:1.5rem;background:var(--bg-primary);border:0.5px solid var(--border-mid);border-radius:var(--radius-lg);padding:10px 16px;font-size:13px;color:var(--text-primary);box-shadow:0 4px 12px rgba(0,0,0,0.12);z-index:300;display:none;max-width:300px}
+  .toast.show{display:block}
+  .toast.ok{border-left:3px solid var(--green-dot)}
+  .toast.err{border-left:3px solid var(--red-dot)}
+  .pending-badge{display:inline-flex;align-items:center;gap:4px;background:var(--amber-bg);color:var(--amber-text);border-radius:var(--radius-md);padding:3px 8px;font-size:11px;font-weight:500;margin-left:8px}
+  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;z-index:100;padding:1rem}
+  .modal{background:var(--bg-primary);border-radius:var(--radius-xl);border:0.5px solid var(--border-light);padding:1.5rem;width:100%;max-width:480px;max-height:90vh;overflow-y:auto}
+  .modal h3{font-size:16px;font-weight:600;margin-bottom:1.25rem}
+  .field-group{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
+  .field-group label{font-size:12px;color:var(--text-secondary);font-weight:500}
+  .field-group select,.field-group input{width:100%;font-size:14px;padding:8px 10px;border-radius:var(--radius-md);border:0.5px solid var(--border-mid);background:var(--bg-secondary);color:var(--text-primary);outline:none}
+  .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:1.25rem;padding-top:1rem;border-top:0.5px solid var(--border-light)}
+  .btn-primary{background:var(--info-bg);color:var(--info-text);border-color:var(--info-border);font-weight:500}
+  .btn-danger{background:var(--danger-bg);color:var(--danger-text);border-color:var(--danger-border);margin-right:auto}
+  .tag-tip{font-size:11px;color:var(--text-tertiary);font-style:italic}
+  .sort-arrow{font-size:10px;margin-left:3px;opacity:0.5}
+  @media(max-width:600px){body{padding:0.75rem}.metrics{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+
+<!-- Pantalla de carga -->
+<div class="loading-screen" id="loadingScreen">
+  <div class="loading-spinner"></div>
+  <div class="loading-text" id="loadingText">Cargando datos desde Google Sheets...</div>
+</div>
+
+<!-- Toast de notificaciones -->
+<div class="toast" id="toast"></div>
+
+<div class="container" id="appContainer" style="display:none">
+  <header>
+    <div>
+      <h1>Gestión de lubricación de máquinas</h1>
+      <p>Los cambios se guardan en Google Sheets y son visibles para todos en tiempo real.</p>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+      <div class="save-indicator">
+        <span class="save-dot" id="saveDot"></span>
+        <span id="saveText">Sincronizado</span>
+      </div>
+      <div style="font-size:11px;color:var(--text-tertiary)" id="lastSync"></div>
+    </div>
+  </header>
+
+  <div class="top-bar">
+    <div class="filters">
+      <input type="text" id="searchInput" placeholder="Buscar máquina..." style="width:150px" oninput="render()">
+      <select id="filterPlant" onchange="render()"><option value="">Todas las plantas</option></select>
+      <select id="filterStatus" onchange="render()">
+        <option value="">Todos los estados</option>
+        <option value="ok">Completas (3/3)</option>
+        <option value="mid">En proceso</option>
+        <option value="alert">Con pendientes</option>
+        <option value="none">Sin documentos</option>
+      </select>
+      <select id="filterDoc" onchange="render()">
+        <option value="">Todos los documentos</option>
+        <option value="ruta_pendiente">Ruta pendiente</option>
+        <option value="plano_pendiente">Plano pendiente</option>
+        <option value="planilla_pendiente">Planilla pendiente</option>
+      </select>
+    </div>
+    <button class="btn btn-sync" onclick="loadFromSheets(true)" id="btnRefresh">↻ Actualizar</button>
+    <button class="btn" onclick="exportCSV()">Exportar CSV</button>
+    <button class="btn btn-add" onclick="openAdd()">+ Agregar</button>
+  </div>
+
+  <div class="metrics" id="metrics"></div>
+
+  <div class="legend">
+    <span style="font-weight:500">Estado:</span>
+    <span class="legend-item"><span class="dot" style="background:var(--green-dot)"></span>Completa</span>
+    <span class="legend-item"><span class="dot" style="background:var(--amber-dot)"></span>En proceso</span>
+    <span class="legend-item"><span class="dot" style="background:var(--red-dot)"></span>Pendiente</span>
+    <span class="tag-tip" style="margin-left:6px">· Clic en badge para cambiar · Se guarda automáticamente en Sheets</span>
+  </div>
+
+  <div class="table-card">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th onclick="sortBy('nombre')">Máquina <span class="sort-arrow" id="s-nombre"></span></th>
+            <th onclick="sortBy('plant')">Planta <span class="sort-arrow" id="s-plant"></span></th>
+            <th onclick="sortBy('ruta')">Ruta de lubricación <span class="sort-arrow" id="s-ruta"></span></th>
+            <th onclick="sortBy('plano')">Plano de lubricación <span class="sort-arrow" id="s-plano"></span></th>
+            <th onclick="sortBy('planilla')">Planilla de lubricación <span class="sort-arrow" id="s-planilla"></span></th>
+            <th onclick="sortBy('score')">Avance <span class="sort-arrow" id="s-score"></span></th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+      <div id="emptyMsg" class="empty" style="display:none">No hay máquinas que coincidan con los filtros.</div>
+    </div>
+  </div>
+</div>
+
+<div id="modal" class="modal-bg" style="display:none" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <h3 id="modalTitle">Agregar máquina</h3>
+    <div class="field-group"><label>Código / Nombre</label><input id="fNombre" type="text" placeholder="Ej: AL01"></div>
+    <div class="field-group"><label>Planta</label><input id="fPlant" type="text" placeholder="Ej: Tubos"></div>
+    <div class="field-group"><label>Ruta de lubricación</label>
+      <select id="fRuta"><option value="pendiente">Pendiente</option><option value="proceso">En proceso</option><option value="completa">Completa</option></select></div>
+    <div class="field-group"><label>Plano de lubricación</label>
+      <select id="fPlano"><option value="pendiente">Pendiente</option><option value="proceso">En proceso</option><option value="completa">Completa</option></select></div>
+    <div class="field-group"><label>Planilla de lubricación</label>
+      <select id="fPlanilla"><option value="pendiente">Pendiente</option><option value="proceso">En proceso</option><option value="completa">Completa</option></select></div>
+    <div class="modal-actions">
+      <button class="btn btn-danger" id="btnDelete" style="display:none" onclick="deleteM()">Eliminar</button>
+      <button class="btn" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveModal()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzX5KTgmO9l5dKaKqbKYDvjOmkDApNxaGocaYsRlERv8GoQOd5xf-pIlrmhzrLJ4ztR/exec';
+const FALLBACK_KEY = 'lubricacion_fallback_v1';
+const DOCS = ['ruta','plano','planilla'];
+
+// Datos iniciales para primer uso (si Sheets está vacío)
+const SEED_DATA = [
+  {id:1, nombre:'AL01', plant:'Tubos',        ruta:'completa',  plano:'pendiente', planilla:'completa'},
+  {id:2, nombre:'AL02', plant:'Tubos',        ruta:'completa',  plano:'pendiente', planilla:'completa'},
+  {id:3, nombre:'AL04', plant:'Tubos',        ruta:'completa',  plano:'pendiente', planilla:'completa'},
+  {id:4, nombre:'CO01', plant:'Barrera',      ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:5, nombre:'FLC1', plant:'Foil',         ruta:'completa',  plano:'completa',  planilla:'completa'},
+  {id:6, nombre:'FLC4', plant:'Foil',         ruta:'completa',  plano:'completa',  planilla:'completa'},
+  {id:7, nombre:'FLG1', plant:'Foil',         ruta:'completa',  plano:'completa',  planilla:'completa'},
+  {id:8, nombre:'FLR2', plant:'Foil',         ruta:'completa',  plano:'completa',  planilla:'completa'},
+  {id:9, nombre:'FLR4', plant:'Foil',         ruta:'completa',  plano:'completa',  planilla:'completa'},
+  {id:10,nombre:'FLR5', plant:'Foil',         ruta:'completa',  plano:'completa',  planilla:'completa'},
+  {id:11,nombre:'FLR6', plant:'Foil',         ruta:'completa',  plano:'completa',  planilla:'completa'},
+  {id:12,nombre:'FLR9', plant:'Foil',         ruta:'completa',  plano:'completa',  planilla:'completa'},
+  {id:13,nombre:'FR10', plant:'Foil',         ruta:'completa',  plano:'completa',  planilla:'completa'},
+  {id:14,nombre:'FR13', plant:'Foil',         ruta:'completa',  plano:'completa',  planilla:'completa'},
+  {id:15,nombre:'FR17', plant:'Foil',         ruta:'completa',  plano:'completa',  planilla:'completa'},
+  {id:16,nombre:'HF03', plant:'Prandi',       ruta:'completa',  plano:'completa',  planilla:'completa'},
+  {id:17,nombre:'HF04', plant:'Prandi',       ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:18,nombre:'HF05', plant:'Prandi',       ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:19,nombre:'HF06', plant:'Prandi',       ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:20,nombre:'HF07', plant:'Prandi',       ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:21,nombre:'HF09', plant:'Prandi',       ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:22,nombre:'HF10', plant:'Prandi',       ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:23,nombre:'IM01', plant:'Impresion',    ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:24,nombre:'IM05', plant:'Impresion',    ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:25,nombre:'IM06', plant:'Impresion',    ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:26,nombre:'IM17', plant:'Impresion',    ruta:'completa',  plano:'completa',  planilla:'completa'},
+  {id:27,nombre:'IM18', plant:'Impresion',    ruta:'completa',  plano:'completa',  planilla:'completa'},
+  {id:28,nombre:'IM21', plant:'Impresion',    ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:29,nombre:'IM22', plant:'Impresion',    ruta:'completa',  plano:'completa',  planilla:'completa'},
+  {id:30,nombre:'LA01', plant:'Laminacion',   ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:31,nombre:'LA04', plant:'Laminacion',   ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:32,nombre:'LA09', plant:'Laminacion',   ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:33,nombre:'LA12', plant:'Laminacion',   ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:34,nombre:'LA14', plant:'Laminacion',   ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:35,nombre:'LA15', plant:'Laminacion',   ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:36,nombre:'MA01', plant:'Mangas',       ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:37,nombre:'MA05', plant:'Mangas',       ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:38,nombre:'MA06', plant:'Mangas',       ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:39,nombre:'MA09', plant:'Mangas',       ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:40,nombre:'MA12', plant:'Mangas',       ruta:'completa',  plano:'completa',  planilla:'completa'},
+  {id:41,nombre:'OM40', plant:'Term Linea',   ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:42,nombre:'OM50', plant:'Term Linea',   ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:43,nombre:'OM51', plant:'Term Linea',   ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:44,nombre:'OM52', plant:'Term Linea',   ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:45,nombre:'OM70', plant:'Term Linea',   ruta:'completa',  plano:'completa',  planilla:'completa'},
+  {id:46,nombre:'OM75', plant:'Term Linea',   ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:47,nombre:'OM77', plant:'Term Linea',   ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:48,nombre:'OM78', plant:'Term Linea',   ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:49,nombre:'OM79', plant:'Term Linea',   ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:50,nombre:'OM80', plant:'Term Linea',   ruta:'completa',  plano:'completa',  planilla:'completa'},
+  {id:51,nombre:'OM82', plant:'Term Linea',   ruta:'completa',  plano:'completa',  planilla:'completa'},
+  {id:52,nombre:'OM83', plant:'Term Linea',   ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:53,nombre:'OM85', plant:'Term Linea',   ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:54,nombre:'OM86', plant:'Term Linea',   ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:55,nombre:'OM87', plant:'Term Linea',   ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:56,nombre:'OM88', plant:'Term Linea',   ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:57,nombre:'TE02', plant:'Term F Linea', ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:58,nombre:'TE06', plant:'Term F Linea', ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:59,nombre:'TE07', plant:'Term F Linea', ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:60,nombre:'TE08', plant:'Term F Linea', ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:61,nombre:'TE17', plant:'Term F Linea', ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:62,nombre:'TE22', plant:'Term F Linea', ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:63,nombre:'TE29', plant:'Term F Linea', ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:64,nombre:'TE32', plant:'Term F Linea', ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:65,nombre:'TI02', plant:'Term F Linea', ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:66,nombre:'TI03', plant:'Term F Linea', ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:67,nombre:'TI07', plant:'Term F Linea', ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:68,nombre:'TI08', plant:'Term F Linea', ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:69,nombre:'TI11', plant:'Term F Linea', ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:70,nombre:'TI18', plant:'Term F Linea', ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:71,nombre:'TI28', plant:'Term F Linea', ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:72,nombre:'TI31', plant:'Term F Linea', ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:73,nombre:'TI35', plant:'Term F Linea', ruta:'completa',  plano:'completa',  planilla:'completa'},
+  {id:74,nombre:'UC02', plant:'Papel',        ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:75,nombre:'UF05', plant:'Papel',        ruta:'completa',  plano:'completa',  planilla:'completa'},
+  {id:76,nombre:'UF06', plant:'Papel',        ruta:'completa',  plano:'completa',  planilla:'completa'},
+  {id:77,nombre:'UF07', plant:'Papel',        ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:78,nombre:'UF08', plant:'Papel',        ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:79,nombre:'UF09', plant:'Papel',        ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:80,nombre:'UF11', plant:'Papel',        ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:81,nombre:'UF12', plant:'Papel',        ruta:'completa',  plano:'completa',  planilla:'completa'},
+  {id:82,nombre:'UF14', plant:'Papel',        ruta:'completa',  plano:'completa',  planilla:'completa'},
+  {id:83,nombre:'UF16', plant:'Papel',        ruta:'completa',  plano:'completa',  planilla:'completa'},
+  {id:84,nombre:'UF20', plant:'Papel',        ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:85,nombre:'UF21', plant:'Papel',        ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:86,nombre:'UF25', plant:'Papel',        ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:87,nombre:'UF26', plant:'Papel',        ruta:'completa',  plano:'completa',  planilla:'completa'},
+  {id:88,nombre:'UF27', plant:'Papel',        ruta:'completa',  plano:'completa',  planilla:'completa'},
+  {id:89,nombre:'UF28', plant:'Papel',        ruta:'completa',  plano:'completa',  planilla:'completa'},
+  {id:90,nombre:'UF29', plant:'Papel',        ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:91,nombre:'UF30', plant:'Papel',        ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:92,nombre:'UF31', plant:'Papel',        ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:93,nombre:'UF32', plant:'Papel',        ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:94,nombre:'UF33', plant:'Papel',        ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:95,nombre:'UF34', plant:'Papel',        ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:96,nombre:'UF35', plant:'Papel',        ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:97,nombre:'UF36', plant:'Papel',        ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:98,nombre:'UF37', plant:'Papel',        ruta:'completa',  plano:'completa',  planilla:'completa'},
+  {id:99,nombre:'UF38', plant:'Papel',        ruta:'completa',  plano:'completa',  planilla:'completa'},
+  {id:100,nombre:'UF39',plant:'Papel',        ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:101,nombre:'UF40',plant:'Papel',        ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:102,nombre:'UF41',plant:'Papel',        ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:103,nombre:'UI02',plant:'Papel',        ruta:'completa',  plano:'completa',  planilla:'completa'},
+  {id:104,nombre:'UI03',plant:'Papel',        ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:105,nombre:'UR01',plant:'Papel',        ruta:'completa',  plano:'completa',  planilla:'completa'},
+  {id:106,nombre:'UR02',plant:'Papel',        ruta:'completa',  plano:'completa',  planilla:'completa'},
+  {id:107,nombre:'UR03',plant:'Papel',        ruta:'completa',  plano:'completa',  planilla:'completa'},
+  {id:108,nombre:'UR04',plant:'Papel',        ruta:'completa',  plano:'completa',  planilla:'completa'},
+  {id:109,nombre:'UR05',plant:'Papel',        ruta:'completa',  plano:'completa',  planilla:'completa'},
+  {id:110,nombre:'UR06',plant:'Papel',        ruta:'completa',  plano:'completa',  planilla:'completa'},
+  {id:111,nombre:'UR07',plant:'Papel',        ruta:'completa',  plano:'completa',  planilla:'completa'},
+  {id:112,nombre:'WE05',plant:'Encartonado',  ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:113,nombre:'WE07',plant:'Encartonado',  ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:114,nombre:'WE08',plant:'Encartonado',  ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:115,nombre:'WE09',plant:'Encartonado',  ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:116,nombre:'WE10',plant:'Encartonado',  ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:117,nombre:'WE12',plant:'Encartonado',  ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:118,nombre:'WE13',plant:'Encartonado',  ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:119,nombre:'WE14',plant:'Encartonado',  ruta:'pendiente', plano:'pendiente', planilla:'pendiente'},
+  {id:120,nombre:'YN03',plant:'Inyeccion',    ruta:'completa',  plano:'completa',  planilla:'completa'},
+  {id:121,nombre:'YN06',plant:'Inyeccion',    ruta:'completa',  plano:'completa',  planilla:'completa'},
+  {id:122,nombre:'YN09',plant:'Inyeccion',    ruta:'completa',  plano:'completa',  planilla:'completa'},
+  {id:123,nombre:'YN11',plant:'Inyeccion',    ruta:'completa',  plano:'completa',  planilla:'completa'},
+  {id:124,nombre:'YN12',plant:'Inyeccion',    ruta:'completa',  plano:'completa',  planilla:'completa'},
+  {id:125,nombre:'YN13',plant:'Inyeccion',    ruta:'completa',  plano:'completa',  planilla:'completa'},
+  {id:126,nombre:'YN15',plant:'Inyeccion',    ruta:'completa',  plano:'completa',  planilla:'completa'},
+  {id:127,nombre:'YN16',plant:'Inyeccion',    ruta:'completa',  plano:'completa',  planilla:'completa'},
+  {id:128,nombre:'YN17',plant:'Inyeccion',    ruta:'completa',  plano:'completa',  planilla:'completa'},
+  {id:129,nombre:'YN18',plant:'Inyeccion',    ruta:'completa',  plano:'completa',  planilla:'completa'},
+];
+
+let data = [];
+let nextId = 130;
+let editId = null;
+let sortCol = 'plant', sortDir = 1;
+let saveTimer = null;
+let isSaving = false;
+
+// ── Utilidades UI ──────────────────────────────────────────────
+function showToast(msg, type='ok', duration=3000) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + type;
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.className='toast', duration);
+}
+
+function setStatus(text, state='ok') {
+  const dot = document.getElementById('saveDot');
+  const txt = document.getElementById('saveText');
+  dot.className = 'save-dot' + (state==='saving'?' saving':state==='error'?' error':'');
+  txt.textContent = text;
+}
+
+function setLastSync() {
+  const now = new Date();
+  document.getElementById('lastSync').textContent =
+    'Última sync: ' + now.toLocaleTimeString('es-CO', {hour:'2-digit', minute:'2-digit'});
+}
+
+// ── Google Sheets I/O ──────────────────────────────────────────
+async function loadFromSheets(manual=false) {
+  const btn = document.getElementById('btnRefresh');
+  if(btn) btn.disabled = true;
+  if(manual) setStatus('Actualizando...', 'saving');
+
+  try {
+    const res = await fetch(SCRIPT_URL + '?t=' + Date.now());
+    const json = await res.json();
+
+    if (Array.isArray(json) && json.length > 0) {
+      data = json.map(r => ({
+        id: Number(r.id),
+        nombre: String(r.nombre || ''),
+        plant: String(r.plant || ''),
+        ruta: String(r.ruta || 'pendiente'),
+        plano: String(r.plano || 'pendiente'),
+        planilla: String(r.planilla || 'pendiente'),
+      }));
+      nextId = Math.max(...data.map(m=>m.id)) + 1;
+      localStorage.setItem(FALLBACK_KEY, JSON.stringify({data, nextId}));
+      setStatus('Sincronizado', 'ok');
+      setLastSync();
+      if(manual) showToast('Datos actualizados desde Google Sheets', 'ok');
+    } else {
+      // Sheets vacío → sembrar datos iniciales
+      await pushToSheets(SEED_DATA);
+      data = JSON.parse(JSON.stringify(SEED_DATA));
+      setStatus('Datos iniciales cargados', 'ok');
+      setLastSync();
+    }
+  } catch(e) {
+    // Sin internet → usar caché local
+    const cached = localStorage.getItem(FALLBACK_KEY);
+    if(cached) {
+      const p = JSON.parse(cached);
+      data = p.data; nextId = p.nextId || 130;
+      setStatus('Sin conexion — datos locales', 'error');
+      if(manual) showToast('No se pudo conectar. Mostrando datos guardados localmente.', 'err', 5000);
+    } else {
+      data = JSON.parse(JSON.stringify(SEED_DATA));
+      setStatus('Sin conexion — datos de ejemplo', 'error');
+    }
+  }
+
+  document.getElementById('loadingScreen').style.display = 'none';
+  document.getElementById('appContainer').style.display = '';
+  if(btn) btn.disabled = false;
+  render();
+}
+
+async function pushToSheets(rows) {
+  const res = await fetch(SCRIPT_URL, {
+    method: 'POST',
+    body: JSON.stringify({ action: 'save', data: rows }),
+  });
+  return res.json();
+}
+
+function scheduleSave() {
+  setStatus('Guardando...', 'saving');
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(async () => {
+    isSaving = true;
+    try {
+      await pushToSheets(data);
+      localStorage.setItem(FALLBACK_KEY, JSON.stringify({data, nextId}));
+      setStatus('Guardado en Sheets', 'ok');
+      setLastSync();
+      showToast('Cambio guardado y visible para todos', 'ok', 2500);
+    } catch(e) {
+      localStorage.setItem(FALLBACK_KEY, JSON.stringify({data, nextId}));
+      setStatus('Error al guardar en Sheets', 'error');
+      showToast('No se pudo guardar en Sheets. Cambio guardado localmente.', 'err', 5000);
+    }
+    isSaving = false;
+  }, 600);
+}
+
+// ── Lógica de tabla ────────────────────────────────────────────
+function score(m){ return DOCS.filter(d=>m[d]==='completa').length; }
+function rowClass(m){ let c=score(m); return c===3?'row-ok':c===0?'row-alert':'row-mid'; }
+function label(s){ return s==='completa'?'Completa':s==='proceso'?'En proceso':'Pendiente'; }
+function getPlants(){ return [...new Set(data.map(m=>m.plant))].sort(); }
+
+function updatePlantFilter(){
+  const sel=document.getElementById('filterPlant');
+  const val=sel.value;
+  sel.innerHTML='<option value="">Todas las plantas</option>'+getPlants().map(p=>`<option value="${p}"${p===val?' selected':''}>${p}</option>`).join('');
+}
+
+function filteredData(){
+  const q=document.getElementById('searchInput').value.toLowerCase();
+  const plant=document.getElementById('filterPlant').value;
+  const st=document.getElementById('filterStatus').value;
+  const doc=document.getElementById('filterDoc').value;
+  return data.filter(m=>{
+    if(q&&!m.nombre.toLowerCase().includes(q)&&!m.plant.toLowerCase().includes(q)) return false;
+    if(plant&&m.plant!==plant) return false;
+    if(st){
+      const s=score(m);
+      if(st==='ok'&&s!==3) return false;
+      if(st==='none'&&s!==0) return false;
+      if(st==='alert'&&!(s<3&&DOCS.some(d=>m[d]==='pendiente'))) return false;
+      if(st==='mid'&&!(s<3&&s>0&&!DOCS.some(d=>m[d]==='pendiente'))) return false;
+    }
+    if(doc){const[d,v]=doc.split('_');if(m[d]!==v)return false;}
+    return true;
+  });
+}
+
+function sortData(rows){
+  return rows.slice().sort((a,b)=>{
+    let av,bv;
+    if(sortCol==='score'){av=score(a);bv=score(b);}
+    else{av=(a[sortCol]||'').toLowerCase();bv=(b[sortCol]||'').toLowerCase();}
+    return av<bv?-sortDir:av>bv?sortDir:0;
+  });
+}
+
+function sortBy(col){
+  if(sortCol===col) sortDir*=-1; else{sortCol=col;sortDir=1;}
+  ['nombre','plant','ruta','plano','planilla','score'].forEach(c=>{
+    const el=document.getElementById('s-'+c);
+    if(el) el.textContent=c===sortCol?(sortDir===1?'▲':'▼'):'';
+  });
+  render();
+}
+
+function renderMetrics(){
+  const total=data.length;
+  const ok=data.filter(m=>score(m)===3).length;
+  const pend=data.filter(m=>score(m)===0).length;
+  const parcial=data.filter(m=>score(m)>0&&score(m)<3).length;
+  const totalDocs=data.length*3;
+  const compDocs=data.reduce((a,m)=>a+score(m),0);
+  const pct=Math.round(compDocs/totalDocs*100);
+  document.getElementById('metrics').innerHTML=`
+    <div class="metric"><div class="metric-label">Total maquinas</div><div class="metric-value">${total}</div><div class="metric-sub">registradas</div></div>
+    <div class="metric"><div class="metric-label">Completas</div><div class="metric-value" style="color:var(--green-dot)">${ok}</div><div class="metric-sub">3/3 documentos</div></div>
+    <div class="metric"><div class="metric-label">En proceso</div><div class="metric-value" style="color:var(--amber-dot)">${parcial}</div><div class="metric-sub">parcialmente</div></div>
+    <div class="metric"><div class="metric-label">Sin documentos</div><div class="metric-value" style="color:var(--red-dot)">${pend}</div><div class="metric-sub">0/3 documentos</div></div>
+    <div class="metric"><div class="metric-label">Avance global</div><div class="metric-value">${pct}%</div><div class="metric-sub">${compDocs}/${totalDocs} docs</div></div>
+  `;
+}
+
+function scoreBar(m){
+  const colors={completa:'var(--green-dot)',proceso:'var(--amber-dot)',pendiente:'var(--red-dot)'};
+  return `<div class="score-bar">${DOCS.map(d=>`<div class="score-seg" style="background:${colors[m[d]]}"></div>`).join('')}<span class="score-label">${score(m)}/3</span></div>`;
+}
+
+function render(){
+  updatePlantFilter(); renderMetrics();
+  const rows=sortData(filteredData());
+  const tbody=document.getElementById('tbody');
+  const empty=document.getElementById('emptyMsg');
+  if(!rows.length){tbody.innerHTML='';empty.style.display='';return;}
+  empty.style.display='none';
+  tbody.innerHTML=rows.map(m=>`
+    <tr class="${rowClass(m)}">
+      <td><div class="maquina-name">${m.nombre}</div></td>
+      <td><div class="plant-badge">${m.plant}</div></td>
+      ${DOCS.map(d=>`<td><button class="tag tag-${m[d]}" onclick="quickCycle(${m.id},'${d}')"><span class="dot" style="background:${m[d]==='completa'?'var(--green-dot)':m[d]==='proceso'?'var(--amber-dot)':'var(--red-dot)'}"></span>${label(m[d])}</button></td>`).join('')}
+      <td>${scoreBar(m)}</td>
+      <td><button class="btn" style="font-size:11px;padding:3px 9px;height:26px" onclick="openEdit(${m.id})">Editar</button></td>
+    </tr>
+  `).join('');
+}
+
+function quickCycle(id, doc){
+  const m=data.find(x=>x.id===id); if(!m) return;
+  const order=['pendiente','proceso','completa'];
+  m[doc]=order[(order.indexOf(m[doc])+1)%3];
+  render(); scheduleSave();
+}
+
+function openAdd(){
+  editId=null;
+  document.getElementById('modalTitle').textContent='Agregar maquina';
+  document.getElementById('fNombre').value=''; document.getElementById('fPlant').value='';
+  ['fRuta','fPlano','fPlanilla'].forEach(id=>document.getElementById(id).value='pendiente');
+  document.getElementById('btnDelete').style.display='none';
+  document.getElementById('modal').style.display='flex';
+}
+
+function openEdit(id){
+  const m=data.find(x=>x.id===id); editId=id;
+  document.getElementById('modalTitle').textContent='Editar maquina';
+  document.getElementById('fNombre').value=m.nombre; document.getElementById('fPlant').value=m.plant;
+  document.getElementById('fRuta').value=m.ruta; document.getElementById('fPlano').value=m.plano; document.getElementById('fPlanilla').value=m.planilla;
+  document.getElementById('btnDelete').style.display='';
+  document.getElementById('modal').style.display='flex';
+}
+
+function saveModal(){
+  const nombre=document.getElementById('fNombre').value.trim();
+  const plant=document.getElementById('fPlant').value.trim();
+  if(!nombre||!plant){alert('Por favor completa codigo y planta.');return;}
+  const obj={nombre,plant,ruta:document.getElementById('fRuta').value,plano:document.getElementById('fPlano').value,planilla:document.getElementById('fPlanilla').value};
+  if(editId){Object.assign(data.find(x=>x.id===editId),obj);}
+  else{data.push({id:nextId++,...obj});}
+  closeModal(); render(); scheduleSave();
+}
+
+function deleteM(){
+  if(!confirm('Eliminar esta maquina?')) return;
+  data=data.filter(x=>x.id!==editId);
+  closeModal(); render(); scheduleSave();
+}
+
+function closeModal(){ document.getElementById('modal').style.display='none'; }
+
+function exportCSV(){
+  const header='Codigo,Planta,Ruta de lubricacion,Plano de lubricacion,Planilla de lubricacion,Avance';
+  const rows=data.map(m=>`"${m.nombre}","${m.plant}","${label(m.ruta)}","${label(m.plano)}","${label(m.planilla)}","${score(m)}/3"`);
+  const csv=[header,...rows].join('\n');
+  const a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);
+  a.download='lubricacion.csv'; a.click();
+}
+
+// Arranque
+loadFromSheets();
+
+// Auto-refresh cada 2 minutos para ver cambios de otros
+setInterval(() => { if(!isSaving) loadFromSheets(); }, 120000);
+</script>
+</body>
+</html>
