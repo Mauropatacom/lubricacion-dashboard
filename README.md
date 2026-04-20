@@ -1,2 +1,2 @@
-# lubricacion-dashboard
+# Lubricacion-dashboard
 lubricacion-dashboard
